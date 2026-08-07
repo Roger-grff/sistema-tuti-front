@@ -1,0 +1,88 @@
+app/api/pedidos/route.js
+
+import {prisma} from "@/lib/prisma";
+import {validarPedido} from "@/lib/validaciones";
+import { NextResponse } from "next/server";
+
+export async function GET() {
+    try{
+        const pedidos = await prisma.pedido.findMany({
+            include:{
+                cliente:true, detalles:{include:{producto:true,},},
+            },
+            orderBy:{id:"desc",},
+        });
+        return NextResponse.json(pedidos);
+    }catch(error){
+        return NextResponse.json(
+            {mensaje:"error al obtener pedidos", error: error.message},
+            {status: 500}
+        );
+    }
+}
+export async function POST(request) {
+    try{
+        const body = await request.json();
+        const errores = validarPedido(body);
+        if(errores.length > 0){
+            return NextResponse.json(
+                {mensaje: "Datos invalidos",errores},
+                {status: 400}
+            );
+        }
+        const cliente = await prisma.cliente.findUnique({
+            where:{
+                id: Number(body.clienteId),
+            },
+        });
+        if(!cliente){
+            return NextResponse.json(
+                {mensaje:"Cliente no encontrado"},
+                {status:404}
+            );
+        }
+        const pedido = await prisma.$transaction(async(tx) =>{
+            const nuevoPedido = await tx.pedido.create({
+                data:{
+                    clienteId:Number(body.clienteId),
+                },
+            });
+            for(const item of body.productos){
+                const producto = await tx.producto.findUnique({
+                    where:{
+                        id:Number(item.productoId),
+                    },
+                });
+                if(!producto){
+                    throw new Error(`Producto ${item.productoId} no encontrado`);
+                }
+                if(producto.stock < item.cantidad){
+                    throw new Error(`Stock insuficiente ${producto.nombre}`);
+                }
+            
+            await tx.detallePedido.create({
+                data:{
+                    pedidoId: nuevoPedido.id,
+                    productoId: producto.id,
+                    cantidad: Number(item.cantidad),
+                    precio: producto.precio,
+                },
+            });
+            await tx.producto.update({
+                where:{id: producto.id,},
+                data:{stock: producto.stock - Number(item.cantidad),},
+            });
+        }
+        return nuevoPedido;
+        });
+        return NextResponse.json(
+            {mensaje: "pedido registrado", pedido,},
+            {status:201}
+        );
+    }catch(error){
+        return NextResponse.json(
+            {mensaje: error.message,},
+            {status:500}
+        );
+    }
+}

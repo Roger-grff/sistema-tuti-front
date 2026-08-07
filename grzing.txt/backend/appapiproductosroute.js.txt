@@ -1,0 +1,62 @@
+app/api/productos/route.js
+import { prisma } from "@/lib/prisma";
+import { validarProducto } from "@/lib/validaciones";
+import { NextResponse } from "next/server";
+
+export async function GET() {
+    try{
+        const productos = await prisma.producto.findMany({
+            orderBy:{
+                id: "asc",
+            },
+        });
+        return NextResponse.json(productos);
+    }catch(error){
+        return NextResponse.json(
+            {mensaje: "Error al obtener productos", error: error.message},
+            {status: 500}
+        );
+    }
+}
+
+export async function POST(request) {
+    try{
+        const body = await request.json();
+        const errores = validarProducto(body);
+        if(errores.length > 0){
+            return NextResponse.json(
+                {mensaje: "Datos invalidos", errores},
+                {status: 400}
+            );
+        }
+        const exisCodigo = await prisma.producto.findUnique({
+            where: {
+                codigo: body.codigo
+            }
+        });
+        if (exisCodigo){
+            return NextResponse.json(
+                {mensaje: "cedula ya registrada"},
+                {status: 409}
+            );
+        }
+        const producto = await prisma.producto.create({
+            data:{
+                codigo: body.codigo,
+                nombre: body.nombre,
+                descripcion: body.descripcion,
+                precio: Number(body.precio),
+                stock: Number(body.stock)
+            }
+        });
+        return NextResponse.json(producto,{
+            status: 201
+        });
+    }catch(error){
+        return NextResponse.json(
+            {mensaje: "Error al crear el producto", error: error.message},
+            {status:500}
+    );
+    }
+}
+

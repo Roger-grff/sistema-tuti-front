@@ -1,0 +1,37 @@
+scripts/seed.js
+
+import {PrismaClient} from "@prisma/client";
+import bcrypt from "bcrypt";
+import { error } from "node:console";
+
+const prisma = new PrismaClient();
+async function main() {
+    const existe = await prisma.usuario.findUnique({
+        where:{
+            usuario:"admin",
+        },
+    });
+    if(existe){
+        console.log("el usuario administrador ya existe");
+        return;
+    }
+    const password = await bcrypt.hash("123456",10);
+
+    await prisma.usuario.create({
+        data:{
+            nombre: "administrador",
+            usuario: "admin",
+            password: password,
+        },
+    });
+
+    console.log("usuario creado correctamente")
+}
+
+main()
+.catch((error)=>{
+    console.error(error);
+})
+.finally(async () =>{
+    await prisma.$disconnect();
+});

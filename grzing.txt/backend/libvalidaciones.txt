@@ -1,0 +1,66 @@
+lib/validaciones
+export function validarCli(cliente){
+    const errores =[];
+    if(!cliente.nombre || cliente.nombre.trim() === ""){
+        errores.push("el nombre es obligatorio");
+    }
+    if(!cliente.apellido || cliente.apellido.trim() === ""){
+        errores.push("el apellido es obligatorio");
+    }
+    if(!cliente.cedula || cliente.cedula.trim() === ""){
+        errores.push("la cedula es obligatorio");
+    }
+    if(cliente.cedula && !/^\d{10}$/.test(cliente.cedula)) {
+        errores.push("La cédula debe tener exactamente 10 dígitos.");
+    }
+    if(cliente.correo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cliente.correo)){
+        errores.push("El correo no tiene un formato válido.");
+    }
+    return errores;
+}
+export function validarProducto(producto){
+    const errores = [];
+    if(!producto.codigo || producto.codigo.trim()===""){
+        errores.push("El codigo es obligatorio")
+    }
+    if(!producto.nombre || producto.nombre.trim() === ""){
+        errores.push("El nombre es obligatorio");
+    }
+    if(
+        producto.precio === undefined ||
+        producto.precio === null ||
+        producto.precio === ""
+    ){
+        errores.push("El precio es obligatorio")
+    }else if(Number(producto.precio)<=0){
+        errores.push("El precio debe ser mayor a cero");
+    }
+    if(
+        producto.stock === undefined ||
+        producto.stock === null ||
+        producto.stock === ""
+    ){
+        errores.push("el estock es obligatorio")
+    }else if(Number(producto.stock)<0){
+        errores.push("El stock no puede ser negativo")
+    }
+    return errores;
+}
+export function validarPedido(pedido){
+    const errores = [];
+    if(!pedido.clienteId){
+        errores.push("selecione un cliente");
+    }
+    if(!pedido.productos || pedido.productos.length === 0){
+        errores.push("debe agregar un producto")
+    }
+    pedido.productos?.forEach((producto, index)=>{
+        if(!producto.productoId){
+            errores.push(`Producto ${index + 1}: ID invalido`);
+        }
+        if(!producto.cantidad || producto.cantidad <=0){
+            errores.push(`Producto ${index +1}: cantidad invalida`);
+        }
+    });
+    return errores;
+}

@@ -1,0 +1,102 @@
+app/api/productos/[id]/route.js
+
+import {prisma} from "@/lib/prisma";
+import { NextResponse } from "next/server";
+import { validarProducto } from "@/lib/validaciones";
+
+export async function GET(request, { params }) {
+    try{
+        const producto = await prisma.producto.findUnique({
+            where:{
+                id: Number((await params).id),
+            },
+        });
+        if (!producto){
+            return NextResponse.json(
+                {mensaje: "producto no encontrado"},
+                {status: 404}
+            );
+        }
+        return NextResponse.json(producto);
+    }catch(error){
+        return NextResponse.json(
+            {mensaje: "Error al obtener producto", error: error.message},
+            {status: 500}
+        );
+    }
+}
+export async function PUT(request, { params }) {
+    try{
+        const id = Number((await params).id);
+        const body = await request.json();
+        const errores = validarProducto(body);
+        if(errores.length >0){
+            return NextResponse.json(
+                {mensaje:"Datos invalidos",errores},
+                {status:400}
+            );
+        }
+        const producto = await prisma.producto.findUnique({
+            where:{id}
+        });
+        if (!producto){
+            return NextResponse.json(
+                {mensaje:"producto no encontrado"},
+                {status: 404}
+            );
+        }
+        const codigoRepetido = await prisma.producto.findFirst({
+            where:{
+                codigo: body.codigo,
+                NOT:{id}
+            }
+        });
+        if (codigoRepetido){
+            return NextResponse(
+                {mensaje: "el codigo ya existe"},
+                {status: 409}
+            );
+        }
+        const actualizado = await prisma.producto.update({
+        where:{id},
+        data: {
+            codigo: body.codigo,
+            nombre: body.nombre,
+            descripcion: body.descripcion || null,
+            precio: Number(body.precio),
+            stock: Number(body.stock),
+        },
+    });
+    return NextResponse.json(actualizado);
+    }catch(error){
+        return NextResponse.json(
+            {mensaje: "error al actualizar", error: error.message},
+            {status:500}
+        );
+    }
+}
+export async function DELETE(request, { params }) {
+    try{
+        const id = Number((await params).id);
+        const producto = await prisma.producto.findUnique({
+            where:{id}
+        });
+        if (!producto){
+            return NextResponse.json(
+                {mensaje:"producto no encontrado"},
+                {status:404}
+            );
+        }
+        await prisma.producto.delete({
+            where:{id}
+        });
+        return NextResponse.json(
+                {mensaje:"producto eliminado"},
+        );
+    }catch(error){
+        return NextResponse.json(
+            {mensaje:"error al eliminar producto",error: error.message },
+            {status: 500}
+        );
+    }
+}
